@@ -1,13 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { SupabaseBudget, SupabaseCategory, useSupabaseBudgets } from '@/features/budgets/hooks/useSupabaseBudgets'
 import { useTheme } from '@/features/shared/hooks/useTheme'
-import { useSupabaseBudgets, SupabaseBudget, SupabaseCategory } from '@/features/budgets/hooks/useSupabaseBudgets'
 import { useAuthStore } from '@/store/auth.store'
+import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
-import { useCallback } from 'react'
 
 // Componente para círculo de progreso
 interface ProgressCircleProps {
@@ -106,10 +105,10 @@ export default function BudgetScreen() {
     const strokeDashoffset = circumference * (1 - Math.min(percentage, 100) / 100)
 
     return (
-      <TouchableOpacity onPress={onPress} className="bg-white dark:bg-gray-800 rounded-3xl p-5 w-full border border-gray-200 dark:border-gray-700 shadow-sm" style={{ height: 200 }}>
+      <TouchableOpacity onPress={onPress} className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full border border-gray-200 dark:border-gray-700 shadow-sm" style={{ height: 240 }}>
         <View className="flex-1 justify-between">
           {/* Icono con círculo de progreso */}
-          <View className="items-start mb-3 relative">
+          <View className="items-start mb-4 relative">
             <View className="w-16 h-16 items-center justify-center">
               {existingBudget ? (
                 <Svg width={size} height={size}>
@@ -127,7 +126,12 @@ export default function BudgetScreen() {
                     transform={`rotate(-90, ${center}, ${center})`}
                   />
                 </Svg>
-              ) : null}
+              ) : (
+                <Svg width={size} height={size}>
+                  {/* Círculo de fondo para cards sin presupuesto */}
+                  <Circle cx={center} cy={center} r={radius} stroke="#e5e7eb" strokeWidth={strokeWidth} fill="transparent" />
+                </Svg>
+              )}
 
               {/* Fondo del círculo e icono */}
               <View className="absolute bg-gray-50 dark:bg-gray-700 rounded-full w-12 h-12 items-center justify-center shadow-sm">
@@ -137,8 +141,8 @@ export default function BudgetScreen() {
           </View>
 
           {/* Nombre y estado */}
-          <View className="items-start flex-1 justify-center">
-            <Text className="text-gray-800 dark:text-white text-lg font-semibold mb-1 line-clamp-1">{category.name}</Text>
+          <View className="items-start flex-1 justify-center mb-4">
+            <Text className="text-gray-800 dark:text-white text-lg font-semibold mb-2 line-clamp-1">{category.name}</Text>
             {existingBudget ? (
               <>
                 <Text className="text-gray-500 dark:text-gray-300 text-sm mb-2">{daysRemaining} Días Restantes</Text>
@@ -149,7 +153,13 @@ export default function BudgetScreen() {
                 </View>
               </>
             ) : (
-              <Text className="text-gray-500 dark:text-gray-300 text-sm mb-3">Sin configurar</Text>
+              <>
+                <Text className="text-gray-500 dark:text-gray-300 text-sm mb-2">Sin configurar</Text>
+                <View className="flex-row items-center mb-3">
+                  <View className={`w-2 h-2 rounded-full mr-2`} style={{ backgroundColor: '#9ca3af' }} />
+                  <Text className="text-gray-500 dark:text-gray-300 text-xs capitalize">Sin presupuesto</Text>
+                </View>
+              </>
             )}
           </View>
 
@@ -157,15 +167,16 @@ export default function BudgetScreen() {
           <View className="items-start relative w-full">
             {existingBudget ? (
               <>
-                <Text className="text-gray-800 dark:text-white text-2xl font-bold">{isBalanceVisible ? `$${spent.toLocaleString()}` : '$•••••'}</Text>
-                <Text className="text-gray-500 dark:text-gray-300">De {isBalanceVisible ? `$${Number(existingBudget.amount).toLocaleString()}` : '$•••••'}</Text>
+                <Text className="text-gray-800 dark:text-white text-2xl font-bold mb-1">{isBalanceVisible ? `$${spent.toLocaleString()}` : '$•••••'}</Text>
+                <Text className="text-gray-500 dark:text-gray-300 mb-1">De {isBalanceVisible ? `$${Number(existingBudget.amount).toLocaleString()}` : '$•••••'}</Text>
                 {/* Restante */}
-                <Text className="text-gray-400 dark:text-gray-400 text-xs mt-1">{isBalanceVisible ? `$${(Number(existingBudget.amount) - spent).toLocaleString()} restante` : '$••••• restante'}</Text>
+                <Text className="text-gray-400 dark:text-gray-400 text-xs">{isBalanceVisible ? `$${(Number(existingBudget.amount) - spent).toLocaleString()} restante` : '$••••• restante'}</Text>
               </>
             ) : (
               <>
-                <Text className="text-gray-400 dark:text-gray-400 text-lg font-semibold">Sin presupuesto</Text>
-                <Text className="text-gray-400 dark:text-gray-400 text-sm">Toca para configurar</Text>
+                <Text className="text-gray-400 dark:text-gray-400 text-2xl font-bold mb-1">$0</Text>
+                <Text className="text-gray-400 dark:text-gray-400 mb-1">Sin presupuesto</Text>
+                <Text className="text-gray-400 dark:text-gray-400 text-xs">Toca para configurar</Text>
               </>
             )}
 
@@ -211,7 +222,7 @@ export default function BudgetScreen() {
       <SafeAreaView edges={['top']} className="flex-1">
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <View className="flex-row justify-between items-center px-4 py-2">
-            <TouchableOpacity onPress={() => router.back()} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
+            <TouchableOpacity onPress={() => router.replace('/dashboard')} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
             <Text className="text-white text-2xl font-medium">Presupuestos</Text>
@@ -296,7 +307,7 @@ export default function BudgetScreen() {
                 .map((category) => {
                   const existingBudget = activeBudgets.find((budget) => budget.category_id === category.id)
                   return (
-                    <View key={category.id} style={{ width: '48%', marginBottom: 12 }}>
+                    <View key={category.id} style={{ width: '47%', marginBottom: 16 }}>
                       <CategoryBudgetCard category={category} existingBudget={existingBudget} onPress={() => router.push(`/dashboard/budget/detail?categoryId=${category.id}` as any)} />
                     </View>
                   )

@@ -1,15 +1,15 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Platform, Alert, Image, ActivityIndicator } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
-import { router, useNavigation, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
-import DateTimePicker from '@react-native-community/datetimepicker'
-import { useTheme } from '@/features/shared/hooks/useTheme'
-import { useFinanceStore } from '@/store/finance.store'
-import * as ImagePicker from 'expo-image-picker'
 import { ReceiptService } from '@/features/receipt'
-import { useCreateTransaction } from '@/features/transactions'
 import { CategoryService } from '@/features/shared'
+import { useTheme } from '@/features/shared/hooks/useTheme'
+import { useCreateTransaction } from '@/features/transactions'
+import { useFinanceStore } from '@/store/finance.store'
+import { Ionicons } from '@expo/vector-icons'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import * as ImagePicker from 'expo-image-picker'
+import { router, useLocalSearchParams, useNavigation } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function AddTransactionScreen() {
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense')
@@ -408,21 +408,7 @@ export default function AddTransactionScreen() {
         console.log('📋 Resultado de createTransactionWithReceipt:', result)
 
         if (result.success) {
-          // También agregar al store local para consistencia
-          const newTransaction = {
-            amount: parseFloat(amount),
-            title: title,
-            description: description,
-            type: transactionType,
-            category: selectedCategory,
-            subcategory: selectedSubcategory,
-            notes: notes,
-            hasReceipt: hasReceipt,
-            receiptImage: scannedImage,
-            isRecurring: false,
-          }
-          addTransaction(newTransaction)
-
+          // El store local se sincroniza automáticamente después de crear la transacción
           Alert.alert('¡Éxito!', `${transactionType === 'income' ? 'Ingreso' : 'Gasto'} guardado correctamente con imagen de boleta`)
           clearAllData()
           router.back()
@@ -461,20 +447,7 @@ export default function AddTransactionScreen() {
 
         if (result.success) {
           console.log('✅ Transacción manual guardada exitosamente')
-          const newTransaction = {
-            amount: parseFloat(amount),
-            title: title,
-            description: description,
-            type: transactionType,
-            category: selectedCategory,
-            subcategory: selectedSubcategory,
-            notes: notes,
-            hasReceipt: hasReceipt,
-            receiptImage: scannedImage || undefined,
-            isRecurring: false,
-          }
-
-          addTransaction(newTransaction)
+          // El store local se sincroniza automáticamente después de crear la transacción
           Alert.alert('Éxito', `${transactionType === 'income' ? 'Ingreso' : 'Gasto'} registrado correctamente`)
           clearAllData()
           router.back()

@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase'
 import { create } from 'zustand'
 
 export interface Transaction {
@@ -23,59 +24,23 @@ interface FinanceState {
   income: number
   spending: number
   transactions: Transaction[]
+  isLoading: boolean
+  lastSyncDate: Date | null
   addTransaction: (transaction: Omit<Transaction, 'id' | 'date'>) => void
+  syncWithSupabase: (userId: string) => Promise<void>
+  refreshFromSupabase: (userId: string) => Promise<void>
 }
 
-export const useFinanceStore = create<FinanceState>((set) => ({
-  balance: 243320.0,
-  transferLimit: 8920.0,
-  spent: 5200.0,
-  income: 2450002,
-  spending: 1520228,
-  transactions: [
-    {
-      id: '1',
-      amount: 25000,
-      title: 'Freepik Premium',
-      description: 'Suscripción anual de Freepik Premium para recursos de diseño',
-      type: 'expense',
-      category: 'entertainment',
-      subcategory: 'Streaming',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 días atrás
-      notes: 'Suscripción renovada automáticamente',
-      hasReceipt: true,
-      isRecurring: true,
-      icon: '👑',
-    },
-    {
-      id: '2',
-      amount: 2450000,
-      title: 'Salario Mensual',
-      description: 'Salario del mes de enero 2025',
-      type: 'income',
-      category: 'income',
-      subcategory: 'Salario',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 días atrás
-      notes: 'Pago por nómina bancaria',
-      hasReceipt: false,
-      isRecurring: true,
-      icon: '💰',
-    },
-    {
-      id: '3',
-      amount: 15890,
-      title: 'Farmacia Ahumada',
-      description: 'Compra de medicamentos y productos de farmacia',
-      type: 'expense',
-      category: 'health',
-      subcategory: 'Farmacia',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 día atrás
-      notes: 'Paracetamol, vitamina C y jabón antibacterial',
-      hasReceipt: true,
-      isRecurring: false,
-      icon: '⚕️',
-    },
-  ],
+export const useFinanceStore = create<FinanceState>((set, get) => ({
+  balance: 0,
+  transferLimit: 0,
+  spent: 0,
+  income: 0,
+  spending: 0,
+  transactions: [],
+  isLoading: false,
+  lastSyncDate: null,
+
   addTransaction: (transaction) =>
     set((state) => {
       const newTransaction = {
@@ -99,4 +64,100 @@ export const useFinanceStore = create<FinanceState>((set) => ({
         income: newIncome,
       }
     }),
+
+  /**
+   * Sincroniza el store local con los datos de Supabase
+   */
+  syncWithSupabase: async (userId: string) => {
+    console.log('🔄 FinanceStore - Sincronizando con Supabase para usuario:', userId)
+    set({ isLoading: true })
+
+    try {
+      // Obtener balance mensual desde la vista
+      const { data: monthlyBalance, error: balanceError } = await supabase
+        .from('monthly_balance_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .order('month_year', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (balanceError) {
+        console.error('❌ Error obteniendo balance mensual:', balanceError)
+        throw balanceError
+      }
+
+      // Obtener transacciones recientes
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select(
+          `
+          id,
+          amount,
+          merchant_name,
+          description,
+          transaction_date,
+          notes,
+          transaction_type:transaction_types(name),
+          category:categories(name),
+          subcategory:subcategories(name)
+        `
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (transactionsError) {
+        console.error('❌ Error obteniendo transacciones:', transactionsError)
+        throw transactionsError
+      }
+
+      // Mapear transacciones al formato local
+      const mappedTransactions: Transaction[] = (transactions || []).map((t: any) => ({
+        id: t.id,
+        amount: t.amount,
+        title: t.merchant_name,
+        description: t.description,
+        type: t.transaction_type?.name === 'income' ? 'income' : 'expense',
+        category: t.category?.name || 'Otros',
+        subcategory: t.subcategory?.name || 'General',
+        date: new Date(t.transaction_date),
+        notes: t.notes,
+        hasReceipt: false, // TODO: Verificar si tiene receipt
+        isRecurring: false,
+      }))
+
+      // Actualizar estado con datos de Supabase
+      const newState = {
+        balance: monthlyBalance?.net_balance || 0,
+        transferLimit: monthlyBalance?.total_income || 0,
+        spent: monthlyBalance?.total_expenses || 0,
+        income: monthlyBalance?.total_income || 0,
+        spending: monthlyBalance?.total_expenses || 0,
+        transactions: mappedTransactions,
+        isLoading: false,
+        lastSyncDate: new Date(),
+      }
+
+      console.log('✅ FinanceStore - Sincronización exitosa:', {
+        balance: newState.balance,
+        transactions: newState.transactions.length,
+        lastSync: newState.lastSyncDate,
+      })
+
+      set(newState)
+    } catch (error) {
+      console.error('❌ Error en syncWithSupabase:', error)
+      set({ isLoading: false })
+      throw error
+    }
+  },
+
+  /**
+   * Refresca los datos desde Supabase sin mantener transacciones locales
+   */
+  refreshFromSupabase: async (userId: string) => {
+    console.log('🔄 FinanceStore - Refrescando desde Supabase para usuario:', userId)
+    await get().syncWithSupabase(userId)
+  },
 }))

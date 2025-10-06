@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { GoalsService } from '../services/goals.service'
-import { queryKeys, invalidateQueries } from '@/lib/query-client'
-import { FinancialGoal, GoalContribution, GoalMilestone, CreateGoalRequest, UpdateGoalRequest, ContributionRequest, SavingsData } from '@/types/savings'
+import { invalidateQueries, queryKeys } from '@/lib/query-client'
 import { useAuthStore } from '@/store/auth.store'
+import { ContributionRequest, CreateGoalRequest, FinancialGoal, GoalContribution, UpdateGoalRequest } from '@/types/savings'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { GoalsService } from '../services/goals.service'
 
 // ========== GOALS HOOKS ==========
 
@@ -55,6 +55,7 @@ export const useCreateGoal = () => {
       console.log('🔄 Invalidando queries después de crear goal')
       // Invalidar las queries relacionadas para refrescar los datos
       invalidateQueries.goals()
+      invalidateQueries.savings(user?.id) // ✅ Invalidar datos de savings
 
       // Actualizar el cache optimísticamente
       queryClient.setQueryData(queryKeys.goals.list({}), (oldData: FinancialGoal[] | undefined) => {
@@ -73,6 +74,7 @@ export const useCreateGoal = () => {
  */
 export const useUpdateGoal = () => {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: async ({ id, ...updateData }: { id: string } & Omit<UpdateGoalRequest, 'id'>) => {
@@ -81,6 +83,7 @@ export const useUpdateGoal = () => {
     onSuccess: (data) => {
       // Invalidar queries específicas
       invalidateQueries.goals()
+      invalidateQueries.savings(user?.id) // ✅ Invalidar datos de savings
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.detail(data.id) })
     },
   })
@@ -91,6 +94,7 @@ export const useUpdateGoal = () => {
  */
 export const useDeleteGoal = () => {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -99,6 +103,7 @@ export const useDeleteGoal = () => {
     onSuccess: (id) => {
       // Invalidar queries y remover del cache
       invalidateQueries.goals()
+      invalidateQueries.savings(user?.id) // ✅ Invalidar datos de savings
       queryClient.removeQueries({ queryKey: queryKeys.goals.detail(id) })
     },
   })
@@ -135,6 +140,7 @@ export const useGoalContributions = (
  */
 export const useAddContribution = () => {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: async (contribution: ContributionRequest) => {
@@ -145,6 +151,7 @@ export const useAddContribution = () => {
       console.log('🔄 Invalidando queries después de agregar contribución')
       // Invalidar queries relacionadas
       invalidateQueries.goals()
+      invalidateQueries.savings(user?.id) // ✅ Invalidar datos de savings
       queryClient.invalidateQueries({
         queryKey: queryKeys.goals.contributions(newContribution.goal_id),
       })

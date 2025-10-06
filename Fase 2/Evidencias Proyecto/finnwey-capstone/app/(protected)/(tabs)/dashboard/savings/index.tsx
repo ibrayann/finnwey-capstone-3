@@ -1,14 +1,15 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, Alert } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
-import { useNavigation } from '@react-navigation/native'
-import { useEffect, useState } from 'react'
-import Svg, { Circle } from 'react-native-svg'
+import { useActiveGoals, useSavingsData } from '@/features/goals'
 import { useTheme } from '@/features/shared/hooks/useTheme'
-import { useSavingsData, useActiveGoals } from '@/features/goals'
-import { FinancialGoal } from '@/types/savings'
+import { useSavingsSync } from '@/hooks/useSavingsSync'
 import { useAuthStore } from '@/store/auth.store'
+import { FinancialGoal } from '@/types/savings'
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
+import { router } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Circle } from 'react-native-svg'
 
 export default function SavingsScreen() {
   const navigation = useNavigation()
@@ -20,6 +21,9 @@ export default function SavingsScreen() {
   // ✅ SEGURIDAD: Obtener datos con userId
   const { data: savingsData, isLoading: isLoadingSavings, error: savingsError } = useSavingsData(user?.id)
   const { data: activeGoals, isLoading: isLoadingGoals, error: goalsError } = useActiveGoals(user?.id)
+
+  // Sincronización automática de datos de savings
+  useSavingsSync()
 
   // Funciones para manejar opciones
   const handleCreateGoal = () => {
@@ -77,7 +81,7 @@ export default function SavingsScreen() {
       <View className="flex-1 bg-[#166534] dark:bg-gray-900">
         <SafeAreaView edges={['top']} className="flex-1">
           <View className="flex-row justify-between items-center px-4 py-2">
-            <TouchableOpacity onPress={() => router.back()} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
+            <TouchableOpacity onPress={() => router.replace('/dashboard')} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
             <Text className="text-white text-2xl font-medium">Objetivos de Ahorro</Text>
@@ -166,7 +170,7 @@ export default function SavingsScreen() {
     <View className="flex-1 bg-[#166534] dark:bg-gray-900">
       <SafeAreaView edges={['top']} className="flex-1">
         <View className="flex-row justify-between items-center px-4 py-2">
-          <TouchableOpacity onPress={() => router.back()} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
+          <TouchableOpacity onPress={() => router.replace('/dashboard')} className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text className="text-white text-2xl font-medium">Objetivos de Ahorro</Text>

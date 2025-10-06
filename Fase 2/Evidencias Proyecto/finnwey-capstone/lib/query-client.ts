@@ -122,4 +122,12 @@ export const invalidateQueries = {
     }
     return queryClient.invalidateQueries({ queryKey: queryKeys.balance.all })
   },
+
+  // Invalidar datos de savings
+  savings: (userId?: string) => {
+    if (userId) {
+      return queryClient.invalidateQueries({ queryKey: ['savings', 'data', userId] })
+    }
+    return queryClient.invalidateQueries({ queryKey: ['savings'] })
+  },
 }

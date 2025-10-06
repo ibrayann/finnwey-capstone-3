@@ -1,15 +1,17 @@
-import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { TransactionService, CreateTransactionInput } from '../services/transaction.service'
 import { StorageService } from '@/features/storage/services/storage.service'
-import { ReceiptData } from '@/types/receipt'
-import { supabase } from '@/lib/supabase'
 import { invalidateQueries } from '@/lib/query-client'
+import { supabase } from '@/lib/supabase'
+import { useFinanceStore } from '@/store/finance.store'
+import { ReceiptData } from '@/types/receipt'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { CreateTransactionInput, TransactionService } from '../services/transaction.service'
 
 export function useCreateTransaction() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const { refreshFromSupabase } = useFinanceStore()
 
   /**
    * Crea una transacción completa: sube imagen, guarda transacción y receipt
@@ -76,6 +78,11 @@ export function useCreateTransaction() {
       await invalidateQueries.transactions()
       await invalidateQueries.monthlyBalance(user.id)
       console.log('✅ Queries invalidadas: transacciones y balance mensual')
+
+      // Sincronizar el store local con los datos actualizados de Supabase
+      console.log('🔄 Sincronizando store local con Supabase...')
+      await refreshFromSupabase(user.id)
+      console.log('✅ Store local sincronizado exitosamente')
 
       return {
         success: true,
